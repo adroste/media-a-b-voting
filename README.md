@@ -8,6 +8,8 @@ It can be used for fast media culling.
 * It also has a "star" feature to allow boosting the elo of selected file.
 * The app only supports **Chrome** based browsers.
 
+![App Screenshot](./screenshot.png)
+
 ## on github
 
 Link: [https://adroste.github.io/media-a-b-voting/dist/](https://adroste.github.io/media-a-b-voting/dist/)
