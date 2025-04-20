@@ -38,6 +38,10 @@ export function useVoting() {
   const [nextPair, setNextPair] = useState<[string, string] | undefined>()
 
   const openDirectory = useCallback(async () => {
+    if (!window.showDirectoryPicker) {
+      alert('Browser not supported')
+      throw new Error('Browser not supported')
+    }
     const dirHandle = await showDirectoryPicker({ id: 'dir', mode: 'readwrite' })
     const { fileHandles, parentMap } = await walkFiles(dirHandle, true)
 
