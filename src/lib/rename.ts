@@ -56,5 +56,5 @@ export function updateRenamedVotingDbItems(votingDb: VotingDb, newItems: Set<str
     }
   })
 
-  return { ratings, votes, starred }
+  return { ...votingDb, ratings, votes, starred }
 }

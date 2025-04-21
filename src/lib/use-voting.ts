@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { getAlreadyVotedPairs, Vote } from './vote'
 import { getFullPath, isImage, isVideo, walkFiles } from './fs'
 import throttle from 'lodash/throttle'
-import { boostEloRatings, findMostUncertainPairEloFast, trainEloModel } from './rating/elo'
+import { boostEloRatings, bucketByEloRangeWithCounts, findMostUncertainPairEloFast, trainEloModel } from './rating/elo'
 import { readVotingDbFile, writeVotingDbFile } from './voting-db'
 import { updateRenamedVotingDbItems } from './rename'
 
@@ -23,7 +23,9 @@ const saveVotingDb = throttle(
     let ratings = trainEloModel(votes)
     ratings = boostEloRatings(starred, ratings)
 
-    writeVotingDbFile(rootDirHandle, { ratings, starred, votes })
+    const buckets = bucketByEloRangeWithCounts(ratings)
+
+    writeVotingDbFile(rootDirHandle, { buckets, ratings, starred, votes })
   },
   VOTING_JSON_WRITE_INTERVAL_MS,
   { leading: false, trailing: true },

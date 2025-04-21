@@ -132,3 +132,28 @@ export function boostEloRatings(items: string[], ratings: Ratings, iterations = 
 
   return boostedRatings
 }
+
+export function bucketByEloRangeWithCounts(
+  ratings: Record<string, number>,
+  numberOfBuckets = 10,
+): Record<number, number> {
+  if (numberOfBuckets < 1) throw new Error('Must request at least one bucket.')
+
+  const elos = Object.values(ratings)
+
+  const minElo = Math.floor(Math.min(...elos) ?? 0)
+  const maxElo = Math.floor(Math.max(...elos) ?? DEFAULT_ELO)
+
+  const range = maxElo - minElo || 1 // avoid zero range
+  const bucketSize = Math.floor(range / numberOfBuckets)
+
+  const counts: Record<number, number> = {}
+
+  for (let i = 0; i < numberOfBuckets; i++) {
+    const bucketStart = minElo + i * bucketSize
+    const bucketEnd = i === numberOfBuckets - 1 ? Infinity : minElo + (i + 1) * bucketSize
+    counts[bucketStart] = elos.filter(elo => elo >= bucketStart && elo < bucketEnd).length
+  }
+
+  return counts
+}

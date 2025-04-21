@@ -6,6 +6,7 @@ export interface VotingDb {
   votes: Vote[]
   starred?: string[]
   ratings?: Record<string, number>
+  buckets?: Record<number, number>
 }
 
 function isVotingDb(data: unknown): data is VotingDb {
@@ -24,6 +25,24 @@ function isVotingDb(data: unknown): data is VotingDb {
   )
 }
 
+function votingDbToJsonPretty(data: VotingDb): string {
+  // sort ratings by highest rating first
+  let sortedRatings: Record<string, number> = {}
+  if (data.ratings) {
+    const sorted = Object.entries(data.ratings).sort(([, a], [, b]) => b - a)
+    sortedRatings = Object.fromEntries(sorted)
+  }
+
+  const output: VotingDb = {
+    buckets: data.buckets,
+    starred: data.starred,
+    ratings: sortedRatings,
+    votes: data.votes,
+  }
+
+  return JSON.stringify(output, null, 2)
+}
+
 export async function readVotingDbFile(dirHandle: FileSystemDirectoryHandle): Promise<VotingDb> {
   const fileHandle = await dirHandle.getFileHandle(VOTING_DB_FILE_NAME)
   const file = await fileHandle.getFile()
@@ -37,7 +56,7 @@ export async function writeVotingDbFile(dirHandle: FileSystemDirectoryHandle, da
   console.log(`write: ${VOTING_DB_FILE_NAME}`)
   const fileHandle = await dirHandle.getFileHandle(VOTING_DB_FILE_NAME, { create: true })
   const writable = await fileHandle.createWritable()
-  const json = JSON.stringify(data, null, 2)
+  const json = votingDbToJsonPretty(data)
   await writable.write(json)
   await writable.close()
 }
