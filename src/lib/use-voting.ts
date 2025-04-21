@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { getAlreadyVotedPairs, Vote } from './vote'
-import { getFullPath, isImage, isVideo, walkFiles } from './fs'
+import { getFileNameFromPath, getFullPath, getParentDirFromPath, isImage, isVideo, walkFiles } from './fs'
 import throttle from 'lodash/throttle'
 import { boostEloRatings, bucketByEloRangeWithCounts, findMostUncertainPairEloFast, trainEloModel } from './rating/elo'
 import { readVotingDbFile, writeVotingDbFile } from './voting-db'
@@ -31,6 +31,38 @@ const saveVotingDb = throttle(
   { leading: false, trailing: true },
 )
 
+const THUMBNAIL_SUFFIXES = ['_thumbnail', '_thumb', '_preview']
+function filterThumbnails(fileMap: Map<string, File>): Map<string, File> {
+  const paths = Array.from(fileMap.keys()).map(path => ({
+    parentDir: getParentDirFromPath(path),
+    fileName: getFileNameFromPath(path, false),
+  }))
+
+  const filteredFileMap = new Map<string, File>()
+  fileMap.forEach((file, path) => {
+    const dir = getParentDirFromPath(path)
+    const name = getFileNameFromPath(path, false)
+
+    const suffix = THUMBNAIL_SUFFIXES.find(suffix => name.endsWith(suffix))
+    if (suffix) {
+      const nameWithoutThumbnail = name.replace(suffix, '')
+      // filter out thumbnail files if the original is part of the fileMap
+      // e.g. "file_thumbnail.jpg" -> "file.jpg"
+      // if only the thumbnail is present, keep it
+      if (
+        name.endsWith(suffix) &&
+        paths.some(({ parentDir, fileName }) => parentDir === dir && fileName === nameWithoutThumbnail)
+      ) {
+        return
+      }
+    }
+
+    filteredFileMap.set(path, file)
+    return
+  })
+  return filteredFileMap
+}
+
 export function useVoting() {
   const [rootDirHandle, setRootDirHandle] = useState<FileSystemDirectoryHandle>()
   const [fileMap, setFileMap] = useState<Map<string, File>>(() => new Map())
@@ -50,13 +82,14 @@ export function useVoting() {
 
     const mediaFileHandles = fileHandles.filter(handle => isImage(handle.name) || isVideo(handle.name))
     const mediaFiles: File[] = await Promise.all(mediaFileHandles.map(async fileHandle => await fileHandle.getFile()))
-    const fileMap = new Map<string, File>()
+    let fileMap = new Map<string, File>()
     mediaFileHandles.forEach((fileHandle, i) => {
       const file = mediaFiles[i]
       if (!file) throw new Error('file undefined, this should never happen')
       const fullPath = getFullPath(fileHandle, parentMap)
       fileMap.set(fullPath, file)
     })
+    fileMap = filterThumbnails(fileMap)
 
     let votes: Vote[] = []
     let starredItems = new Set<string>()
