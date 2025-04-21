@@ -77,6 +77,43 @@ export function findMostUncertainPairElo(
   return mostUncertainPair
 }
 
+export function findMostUncertainPairEloFast(
+  items: string[],
+  eloRatings: Ratings,
+  excludedPairs: Set<string>,
+): [string, string] | undefined {
+  const sortedItems = [...items].sort((a, b) => (eloRatings[a] ?? DEFAULT_ELO) - (eloRatings[b] ?? DEFAULT_ELO))
+
+  let mostUncertainPair: [string, string] | undefined = undefined
+  let lowestEloDistance = Infinity
+
+  for (let step = 1; step < sortedItems.length; ++step) {
+    for (let i = 0; i < sortedItems.length - step; ++i) {
+      const a = sortedItems[i]
+      const b = sortedItems[i + step]
+      if (!a || !b) continue
+
+      // skip pairs that are excluded (already voted)
+      const pairKey = getVotePairKey([a, b])
+      if (excludedPairs.has(pairKey)) continue
+
+      const ratingA = eloRatings[a] ?? DEFAULT_ELO
+      const ratingB = eloRatings[b] ?? DEFAULT_ELO
+
+      const eloDistance = Math.abs(ratingA - ratingB)
+
+      if (eloDistance < lowestEloDistance) {
+        lowestEloDistance = eloDistance
+        mostUncertainPair = [a, b]
+      }
+    }
+
+    if (mostUncertainPair) return mostUncertainPair
+  }
+
+  return undefined
+}
+
 export function boostEloRatings(items: string[], ratings: Ratings, iterations = 1000, kFactor = 100): Ratings {
   const boostedRatings: Ratings = { ...ratings }
 

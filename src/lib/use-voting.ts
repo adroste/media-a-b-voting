@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { getAlreadyVotedPairs, Vote } from './vote'
 import { getFullPath, isImage, isVideo, walkFiles } from './fs'
 import throttle from 'lodash/throttle'
-import { boostEloRatings, findMostUncertainPairElo, trainEloModel } from './rating/elo'
+import { boostEloRatings, findMostUncertainPairEloFast, trainEloModel } from './rating/elo'
 import { readVotingDbFile, writeVotingDbFile } from './voting-db'
 
 const VOTING_JSON_WRITE_INTERVAL_MS = 10000
@@ -10,7 +10,7 @@ const VOTING_JSON_WRITE_INTERVAL_MS = 10000
 function findNextPairToVoteOn(items: string[], votes: Vote[]): [string, string] | undefined {
   const alreadyVotedPairs = getAlreadyVotedPairs(votes)
   const ratings = trainEloModel(votes, 5)
-  const mostUncertainPair = findMostUncertainPairElo(items, ratings, alreadyVotedPairs)
+  const mostUncertainPair = findMostUncertainPairEloFast(items, ratings, alreadyVotedPairs)
   return mostUncertainPair
 }
 
