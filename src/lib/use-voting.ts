@@ -4,6 +4,7 @@ import { getFullPath, isImage, isVideo, walkFiles } from './fs'
 import throttle from 'lodash/throttle'
 import { boostEloRatings, findMostUncertainPairEloFast, trainEloModel } from './rating/elo'
 import { readVotingDbFile, writeVotingDbFile } from './voting-db'
+import { updateRenamedVotingDbItems } from './rename'
 
 const VOTING_JSON_WRITE_INTERVAL_MS = 10000
 
@@ -58,7 +59,8 @@ export function useVoting() {
     let votes: Vote[] = []
     let starredItems = new Set<string>()
     try {
-      const votingDb = await readVotingDbFile(dirHandle)
+      let votingDb = await readVotingDbFile(dirHandle)
+      votingDb = updateRenamedVotingDbItems(votingDb, new Set(fileMap.keys()))
       votes = votingDb.votes
       starredItems = new Set(votingDb.starred ?? [])
     } catch (err) {

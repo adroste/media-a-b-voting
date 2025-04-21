@@ -54,3 +54,17 @@ export async function walkFiles(dirHandle: FileSystemDirectoryHandle, recursive:
   }
   return { fileHandles, parentMap }
 }
+
+export function getFileNameFromPath(path: string, withExtension = true) {
+  const parts = path.split('/')
+  const fileName = parts[parts.length - 1] ?? ''
+  if (withExtension) return fileName
+  const dotIndex = fileName.lastIndexOf('.')
+  return fileName.slice(0, dotIndex === -1 ? undefined : dotIndex)
+}
+
+export function getParentDirFromPath(path: string) {
+  const parts = path.split('/')
+  parts.pop()
+  return parts.join('/')
+}
