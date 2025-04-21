@@ -25,7 +25,7 @@ export function MediaViewer({ file }: Readonly<MediaViewerProps>) {
   if (isVideo(file.name)) {
     return (
       <div className="flex justify-center items-center h-full max-h-full">
-        <video className="max-h-full" controls onFocus={blur} muted autoPlay>
+        <video className="max-h-full" controls onFocus={blur} muted autoPlay loop>
           <source key={url} src={url} />
           Your browser does not support the video tag.
         </video>
