@@ -2,7 +2,9 @@ import { Ratings } from '../rating'
 import { shuffleArray } from '../shuffle-array'
 import { getVotePairKey, Vote } from '../vote'
 
-const DEFAULT_ELO = 1000
+export const DEFAULT_ELO = 1000
+const DEFAULT_KFACTOR = 200
+const DEFAULT_ITERATIONS = 1000
 
 function calculateElo(score: number, expected: number, actual: number, kFactor: number): number {
   return score + kFactor * (actual - expected)
@@ -12,8 +14,9 @@ function calculateExpectedScore(ratingA: number, ratingB: number): number {
   return 1 / (1 + Math.pow(10, (ratingB - ratingA) / 480))
 }
 
-export function trainEloModel(votes: Vote[], iterations = 1000, kFactor = 100): Ratings {
+export function trainEloModel(votes: Vote[], iterations = DEFAULT_ITERATIONS, kFactor = DEFAULT_KFACTOR): Ratings {
   const ratings: Ratings = {}
+  const adjustedKFactor = kFactor / iterations
 
   for (let iter = 0; iter < iterations; iter++) {
     // Shuffle votes to avoid bias
@@ -36,8 +39,8 @@ export function trainEloModel(votes: Vote[], iterations = 1000, kFactor = 100): 
         actualB = 1
       }
 
-      ratings[a] = calculateElo(ratingA, expectedA, actualA, kFactor)
-      ratings[b] = calculateElo(ratingB, expectedB, actualB, kFactor)
+      ratings[a] = calculateElo(ratingA, expectedA, actualA, adjustedKFactor)
+      ratings[b] = calculateElo(ratingB, expectedB, actualB, adjustedKFactor)
     }
   }
 
@@ -114,20 +117,18 @@ export function findMostUncertainPairEloFast(
   return undefined
 }
 
-export function boostEloRatings(items: string[], ratings: Ratings, iterations = 1000, kFactor = 100): Ratings {
+export function boostEloRatings(items: string[], ratings: Ratings, kFactor = DEFAULT_KFACTOR): Ratings {
   const boostedRatings: Ratings = { ...ratings }
 
   const ratingValues = Object.values(ratings)
   const avgRating = ratingValues.reduce((sum, rating) => sum + rating, 0) / ratingValues.length
 
-  for (let iter = 0; iter < iterations; iter++) {
-    for (const item of items) {
-      const rating = boostedRatings[item] ?? DEFAULT_ELO
-      // boost by one virtual win against the average
-      const expected = calculateExpectedScore(rating, avgRating)
-      const newElo = calculateElo(rating, expected, 1, kFactor)
-      boostedRatings[item] = newElo
-    }
+  for (const item of items) {
+    const rating = boostedRatings[item] ?? DEFAULT_ELO
+    // boost by one virtual win against the average
+    const expected = calculateExpectedScore(rating, avgRating)
+    const newElo = calculateElo(rating, expected, 1, kFactor)
+    boostedRatings[item] = newElo
   }
 
   return boostedRatings

@@ -1,9 +1,10 @@
 import { useVoting } from '@/lib/use-voting'
 import { VotingActions } from './voting-actions'
 import { MediaPane } from './media-pane'
+import { DEFAULT_ELO } from '@/lib/rating/elo'
 
 export function ABVoting() {
-  const { nextPair, fileMap, pick, undo, votes, openDirectory, starredItems, star } = useVoting()
+  const { ratings, nextPair, fileMap, pick, undo, votes, openDirectory, starredItems, star } = useVoting()
 
   const disableVoting = !nextPair
   const disableUndo = votes.length === 0
@@ -12,6 +13,8 @@ export function ABVoting() {
   const itemB = nextPair?.[1]
   const fileA = fileMap.get(itemA ?? '')
   const fileB = fileMap.get(itemB ?? '')
+  const ratingA = ratings[itemA ?? ''] ?? DEFAULT_ELO
+  const ratingB = ratings[itemB ?? ''] ?? DEFAULT_ELO
 
   return (
     <div className="dark bg-stone-900 text-gray-50 min-h-screen w-full h-screen flex flex-col items-center justify-center">
@@ -22,11 +25,11 @@ export function ABVoting() {
           </div>
         ) : (
           <>
-            <div className="flex-1 shrink-0 h-full max-h-full">
-              <MediaPane item={itemA} file={fileA} star={star} starredItems={starredItems} />
+            <div className="flex-1 shrink-0 h-full max-h-full min-w-0">
+              <MediaPane item={itemA} file={fileA} rating={ratingA} star={star} starredItems={starredItems} />
             </div>
-            <div className="flex-1 shrink-0 h-full max-h-full">
-              <MediaPane item={itemB} file={fileB} star={star} starredItems={starredItems} />
+            <div className="flex-1 shrink-0 h-full max-h-full min-w-0">
+              <MediaPane item={itemB} file={fileB} rating={ratingB} star={star} starredItems={starredItems} />
             </div>
           </>
         )}

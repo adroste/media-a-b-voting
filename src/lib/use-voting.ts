@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getAlreadyVotedPairs, Vote } from './vote'
 import { getFileNameFromPath, getFullPath, getParentDirFromPath, isImage, isVideo, walkFiles } from './fs'
 import throttle from 'lodash/throttle'
@@ -7,13 +7,6 @@ import { readVotingDbFile, writeVotingDbFile } from './voting-db'
 import { updateRenamedVotingDbItems } from './rename'
 
 const VOTING_JSON_WRITE_INTERVAL_MS = 10000
-
-function findNextPairToVoteOn(items: string[], votes: Vote[]): [string, string] | undefined {
-  const alreadyVotedPairs = getAlreadyVotedPairs(votes)
-  const ratings = trainEloModel(votes, 5)
-  const mostUncertainPair = findMostUncertainPairEloFast(items, ratings, alreadyVotedPairs)
-  return mostUncertainPair
-}
 
 const saveVotingDb = throttle(
   (rootDirHandle: FileSystemDirectoryHandle | undefined, votes: Vote[], starredItems: Set<string>) => {
@@ -70,7 +63,23 @@ export function useVoting() {
   const [votes, setVotes] = useState<Vote[]>([])
   const [starredItems, setStarredItems] = useState<Set<string>>(() => new Set())
 
-  const [nextPair, setNextPair] = useState<[string, string] | undefined>()
+  const items = useMemo(() => [...fileMap.keys()], [fileMap])
+  const alreadyVotedPairs = useMemo(() => getAlreadyVotedPairs(votes), [votes])
+
+  // fast approximation, only use 5 iterations
+  // beware: trainEloModel uses random shuffle internally, so ratings could differ between calls
+  const ratings = useMemo(() => trainEloModel(votes, 5), [votes])
+
+  // because trainEloModel is not deterministic, we need to use a ref to force a next pair (for undo)
+  const forcedNextPairRef = useRef<[string, string]>(undefined)
+  const nextPair = useMemo(
+    () => forcedNextPairRef.current ?? findMostUncertainPairEloFast(items, ratings, alreadyVotedPairs),
+    [alreadyVotedPairs, items, ratings],
+  )
+
+  useEffect(() => {
+    saveVotingDb(rootDirHandle, votes, starredItems)
+  }, [rootDirHandle, votes, starredItems])
 
   const openDirectory = useCallback(async () => {
     if (!window.showDirectoryPicker) {
@@ -106,7 +115,6 @@ export function useVoting() {
     setFileMap(fileMap)
     setVotes(votes)
     setStarredItems(starredItems)
-    setNextPair(findNextPairToVoteOn([...fileMap.keys()], votes))
   }, [])
 
   const pick = useCallback(
@@ -114,34 +122,33 @@ export function useVoting() {
       if (!nextPair) return
       const [a, b] = nextPair
       const updatedVotes: Vote[] = [...votes, [a, b, pick]]
+      forcedNextPairRef.current = undefined // auto pick next pair
       setVotes(updatedVotes)
-      saveVotingDb(rootDirHandle, updatedVotes, starredItems)
-      setNextPair(findNextPairToVoteOn([...fileMap.keys()], updatedVotes))
     },
-    [fileMap, nextPair, rootDirHandle, starredItems, votes],
+    [nextPair, votes],
   )
 
   const undo = useCallback(() => {
-    const updatedVotes = [...votes]
-    const lastVote = updatedVotes.pop()
-    setVotes(updatedVotes)
-    saveVotingDb(rootDirHandle, updatedVotes, starredItems)
-    if (lastVote) setNextPair([lastVote[0], lastVote[1]])
-  }, [rootDirHandle, starredItems, votes])
+    setVotes(votes => {
+      const updatedVotes = [...votes]
+      const lastVote = updatedVotes.pop()
+      forcedNextPairRef.current = lastVote ? [lastVote[0], lastVote[1]] : undefined
+      return updatedVotes
+    })
+  }, [])
 
-  const star = useCallback(
-    (item: string, star: boolean) => {
-      const updatedStarredItems = new Set(starredItems)
+  const star = useCallback((item: string, star: boolean) => {
+    setStarredItems(starred => {
+      const updatedStarredItems = new Set(starred)
       if (star) updatedStarredItems.add(item)
       else updatedStarredItems.delete(item)
-      setStarredItems(updatedStarredItems)
-      saveVotingDb(rootDirHandle, votes, updatedStarredItems)
-    },
-    [rootDirHandle, starredItems, votes],
-  )
+      return updatedStarredItems
+    })
+  }, [])
 
   return useMemo(
     () => ({
+      ratings,
       votes,
       nextPair,
       fileMap,
@@ -151,6 +158,6 @@ export function useVoting() {
       star,
       starredItems,
     }),
-    [votes, fileMap, nextPair, pick, undo, openDirectory, star, starredItems],
+    [ratings, votes, nextPair, fileMap, pick, undo, openDirectory, star, starredItems],
   )
 }

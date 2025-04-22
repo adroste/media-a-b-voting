@@ -7,11 +7,12 @@ import { cn } from '@/lib/utils'
 export interface MediaPaneProps {
   file?: File
   item?: string
+  rating: number
   starredItems: Set<string>
   star: (item: string, star: boolean) => void
 }
 
-export function MediaPane({ item, file, starredItems, star }: Readonly<MediaPaneProps>) {
+export function MediaPane({ item, file, starredItems, star, rating }: Readonly<MediaPaneProps>) {
   const isStarred = starredItems.has(item ?? '')
 
   const toggleStar = useCallback(() => {
@@ -31,7 +32,13 @@ export function MediaPane({ item, file, starredItems, star }: Readonly<MediaPane
         <Button size="icon" variant="ghost" onClick={toggleStar}>
           <StarIcon size={16} className={cn('stroke-gray-400', { 'fill-amber-300 stroke-amber-300': isStarred })} />
         </Button>
-        <div className="text-xs text-gray-700 text-center">{file.name}</div>
+        <div
+          className="text-xs text-gray-700 text-center whitespace-nowrap overflow-hidden text-ellipsis"
+          title={file.name}
+        >
+          {file.name}
+        </div>
+        <div className="ml-2 text-xs text-gray-500 text-center">~{Math.floor(rating)}</div>
       </div>
       <div className="flex-1 overflow-hidden">
         <MediaViewer key={file.name} file={file} />
