@@ -52,39 +52,6 @@ export function findMostUncertainPairElo(
   eloRatings: Ratings,
   excludedPairs: Set<string>,
 ): [string, string] | undefined {
-  let mostUncertainPair: [string, string] | undefined = undefined
-  let lowestConfidence = 1
-
-  for (let i = 0; i < items.length; i++) {
-    for (let j = i + 1; j < items.length; j++) {
-      const a = items[i]
-      const b = items[j]
-      if (!a || !b) continue
-
-      // skip pairs that are excluded (already voted)
-      const pairKey = getVotePairKey([a, b])
-      if (excludedPairs.has(pairKey)) continue
-
-      const ratingA = eloRatings[a] ?? DEFAULT_ELO
-      const ratingB = eloRatings[b] ?? DEFAULT_ELO
-      const probA = calculateExpectedScore(ratingA, ratingB)
-      const confidence = Math.abs(probA - 0.5) // close to 0 = uncertain, close to 0.5 = certain
-
-      if (confidence < lowestConfidence) {
-        lowestConfidence = confidence
-        mostUncertainPair = [a, b]
-      }
-    }
-  }
-
-  return mostUncertainPair
-}
-
-export function findMostUncertainPairEloFast(
-  items: string[],
-  eloRatings: Ratings,
-  excludedPairs: Set<string>,
-): [string, string] | undefined {
   const sortedItems = [...items].sort((a, b) => (eloRatings[a] ?? DEFAULT_ELO) - (eloRatings[b] ?? DEFAULT_ELO))
 
   let mostUncertainPair: [string, string] | undefined = undefined

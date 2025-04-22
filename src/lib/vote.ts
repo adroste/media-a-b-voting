@@ -22,3 +22,12 @@ export function getItemsFromVotes(votes: Vote[]): Set<string> {
   }
   return items
 }
+
+export function getVoteCountByItem(votes: Vote[]): Record<string, number> {
+  const voteCountByItem: Record<string, number> = {}
+  for (const [a, b] of votes) {
+    voteCountByItem[a] = (voteCountByItem[a] || 0) + 1
+    voteCountByItem[b] = (voteCountByItem[b] || 0) + 1
+  }
+  return voteCountByItem
+}

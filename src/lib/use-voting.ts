@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { getAlreadyVotedPairs, Vote } from './vote'
+import { Vote } from './vote'
 import { getFileNameFromPath, getFullPath, getParentDirFromPath, isImage, isVideo, walkFiles } from './fs'
 import throttle from 'lodash/throttle'
-import { boostEloRatings, bucketByEloRangeWithCounts, findMostUncertainPairEloFast, trainEloModel } from './rating/elo'
+import { boostEloRatings, bucketByEloRangeWithCounts, trainEloModel } from './rating/elo'
 import { readVotingDbFile, writeVotingDbFile } from './voting-db'
 import { updateRenamedVotingDbItems } from './rename'
+import { findNextPair } from './rating'
 
 const VOTING_JSON_WRITE_INTERVAL_MS = 10000
 
@@ -63,18 +64,18 @@ export function useVoting() {
   const [starredItems, setStarredItems] = useState<Set<string>>(() => new Set())
 
   const items = useMemo(() => [...fileMap.keys()], [fileMap])
-  const alreadyVotedPairs = useMemo(() => getAlreadyVotedPairs(votes), [votes])
 
   // fast approximation, only use 5 iterations
   // beware: trainEloModel uses random shuffle internally, so ratings could differ between calls
   const ratings = useMemo(() => trainEloModel(votes, 5), [votes])
   const boostedRatings = useMemo(() => boostEloRatings(starredItems, ratings), [ratings, starredItems])
 
-  // because trainEloModel is not deterministic, we need to use a ref to force a next pair (for undo)
+  // because findNextPair is randomizing internally, we need to store the forced next pair (for undo)
   const forcedNextPairRef = useRef<[string, string]>(undefined)
   const nextPair = useMemo(
-    () => forcedNextPairRef.current ?? findMostUncertainPairEloFast(items, ratings, alreadyVotedPairs),
-    [alreadyVotedPairs, items, ratings],
+    // () => forcedNextPairRef.current ?? findMostUncertainPairEloFast(items, ratings, alreadyVotedPairs),
+    () => forcedNextPairRef.current ?? findNextPair(items, votes),
+    [items, votes],
   )
 
   useEffect(() => {
