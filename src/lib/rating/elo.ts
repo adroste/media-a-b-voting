@@ -117,7 +117,7 @@ export function findMostUncertainPairEloFast(
   return undefined
 }
 
-export function boostEloRatings(items: string[], ratings: Ratings, kFactor = DEFAULT_KFACTOR): Ratings {
+export function boostEloRatings(items: Set<string>, ratings: Ratings, kFactor = DEFAULT_KFACTOR): Ratings {
   const boostedRatings: Ratings = { ...ratings }
 
   const ratingValues = Object.values(ratings)

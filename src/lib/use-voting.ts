@@ -11,13 +11,12 @@ const VOTING_JSON_WRITE_INTERVAL_MS = 10000
 const saveVotingDb = throttle(
   (rootDirHandle: FileSystemDirectoryHandle | undefined, votes: Vote[], starredItems: Set<string>) => {
     if (!rootDirHandle) return
-    const starred = [...starredItems]
 
     let ratings = trainEloModel(votes)
-    ratings = boostEloRatings(starred, ratings)
+    ratings = boostEloRatings(starredItems, ratings)
 
     const buckets = bucketByEloRangeWithCounts(ratings)
-
+    const starred = [...starredItems]
     writeVotingDbFile(rootDirHandle, { buckets, ratings, starred, votes })
   },
   VOTING_JSON_WRITE_INTERVAL_MS,
@@ -69,6 +68,7 @@ export function useVoting() {
   // fast approximation, only use 5 iterations
   // beware: trainEloModel uses random shuffle internally, so ratings could differ between calls
   const ratings = useMemo(() => trainEloModel(votes, 5), [votes])
+  const boostedRatings = useMemo(() => boostEloRatings(starredItems, ratings), [ratings, starredItems])
 
   // because trainEloModel is not deterministic, we need to use a ref to force a next pair (for undo)
   const forcedNextPairRef = useRef<[string, string]>(undefined)
@@ -148,7 +148,7 @@ export function useVoting() {
 
   return useMemo(
     () => ({
-      ratings,
+      ratings: boostedRatings,
       votes,
       nextPair,
       fileMap,
@@ -158,6 +158,6 @@ export function useVoting() {
       star,
       starredItems,
     }),
-    [ratings, votes, nextPair, fileMap, pick, undo, openDirectory, star, starredItems],
+    [boostedRatings, votes, nextPair, fileMap, pick, undo, openDirectory, star, starredItems],
   )
 }
